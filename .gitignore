@@ -1,0 +1,33 @@
+﻿# Build directories
+build/
+build-make/
+cmake-build*/
+Debug/
+Release/
+x64/
+
+# Build outputs
+*.exe
+*.obj
+*.o
+*.a
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# Local executable copies
+push_swap
+checker
+
+# IDE / editor
+.idea/
+.vscode/
+.vs/
+
+# Logs / temp
+*.log
+*.tmp
+
+push_swap_tester/
