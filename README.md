@@ -2,13 +2,13 @@
 
 `push_swap` is a C++20 implementation for the 42 push_swap project.
 
-Note: This repository has not been fully cleaned up. Many files are remnants of earlier experiments and are no longer used by the current solver. They are kept for now because safely identifying and removing all inactive code would require more cleanup work than was practical for this release.
+Note: This repository has not been fully refactored or cleaned up. Many files are remnants of earlier experiments and are not used by the current solver. They remain in the repository for now, but they do not affect running the current implementation.
 
-## Report
+## Approach Overview
 
-For a detailed explanation of the algorithm, see [the report](docs/push_swap_report.pdf).
+This section gives a brief overview of the approach used in this project. For a detailed explanation, see [the report](docs/push_swap_report.pdf).
 
-This project explains an Iterated Greedy approach to push_swap. Iterated Greedy repeatedly destroys part of the current solution and then reconstructs it using a greedy method.
+This project uses an Iterated Greedy approach to push_swap. Iterated Greedy repeatedly destroys part of the current solution and then reconstructs it using a greedy method.
 
 In this algorithm, an initial solution is first created by leaving a sequence close to circular ascending order in stack A, moving the other values to stack B as chunks by value range, and using beam search to find a procedure for moving the values in B back to A.
 
