@@ -4,6 +4,24 @@
 
 Note: This repository has not been fully cleaned up. Many files are remnants of earlier experiments and are no longer used by the current solver. They are kept for now because safely identifying and removing all inactive code would require more cleanup work than was practical for this release.
 
+## Report
+
+For a detailed explanation of the algorithm, see [the report](docs/push_swap_report.pdf).
+
+This project explains an Iterated Greedy approach to push_swap. Iterated Greedy repeatedly destroys part of the current solution and then reconstructs it using a greedy method.
+
+In this algorithm, an initial solution is first created by leaving a sequence close to circular ascending order in stack A, moving the other values to stack B as chunks by value range, and using beam search to find a procedure for moving the values in B back to A.
+
+A solution is represented not as the final command sequence itself, but by rules that determine when and to which stack each value moves, and its relative position in the circular order of the destination stack. The algorithm improves the initial solution by repeatedly removing information about some values from the current solution, keeping the remaining solution fixed, and greedily deciding those rules again for the removed values.
+
+This implementation is not intended to be used as-is for a 42 project submission. It is written in C++ and manages complex states and data structures using standard library containers, templates, and classes. The current implementation also has a long runtime, so it is not directly suitable for review submission.
+
+## Limitations
+
+This implementation has only been checked with valid inputs. It has not been confirmed whether invalid inputs are handled with appropriate error messages.
+
+It was made to test the cases with 100 and 500 elements. Other input sizes may not work; in that case, the program reports an error.
+
 ## Requirements
 
 - CMake 3.25 or newer
@@ -13,6 +31,24 @@ Confirmed environments:
 
 - Windows with MinGW-w64 / GNU g++ 12.2.0
 - macOS 13 with Homebrew CMake and Homebrew LLVM clang++ 22.1.8
+
+## Example Runs
+
+The following examples show one run for 100 elements and one run for 500 elements. Each example includes the input sequence, the generated command sequence, and a video showing how the stack is sorted.
+
+### 100 Elements
+
+<video src="examples/n100/sort.mp4" controls width="720"></video>
+
+- Input sequence: [input.txt](examples/n100/input.txt)
+- Generated commands: [commands.txt](examples/n100/commands.txt)
+
+### 500 Elements
+
+<video src="examples/n500/sort.mp4" controls width="720"></video>
+
+- Input sequence: [input.txt](examples/n500/input.txt)
+- Generated commands: [commands.txt](examples/n500/commands.txt)
 
 ## Benchmark Results
 
