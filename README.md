@@ -14,6 +14,23 @@ Confirmed environments:
 - Windows with MinGW-w64 / GNU g++ 12.2.0
 - macOS 13 with Homebrew CMake and Homebrew LLVM clang++ 22.1.8
 
+## Benchmark Results
+
+The following benchmark was measured on 500 random cases for each input size. The measurements were collected with `push_swap_tester`.
+
+Environment:
+
+- CPU: Intel Core i7-13700F
+- GPU: NVIDIA GeForce RTX 3070
+
+![Benchmark results](images/result.png)
+
+For 100 elements, the median operation count was 363, and each case took about 1 minute 30 seconds.
+
+For 500 elements, the median operation count was 2970, and each case took about 2 minutes 20 seconds.
+
+Runtime depends on the machine and build environment.
+
 ## Build on Windows
 
 Use MinGW Makefiles. Make sure `g++` and `cmake` are available in `PATH`.
