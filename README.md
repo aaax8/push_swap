@@ -16,7 +16,7 @@ Confirmed environments:
 
 ## Benchmark Results
 
-The following benchmark was measured on 500 random cases for each input size. The measurements were collected with `push_swap_tester`.
+The following benchmark was measured on 500 random cases for each input size. The measurements were collected with [push_swap_tester](https://github.com/nafuka11/push_swap_tester).
 
 Environment:
 
