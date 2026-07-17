@@ -6,7 +6,7 @@ Note: This repository has not been fully refactored or cleaned up. Many files ar
 
 ## Approach Overview
 
-This section gives a brief overview of the approach used in this project. For a detailed explanation, see [the report](docs/push_swap_report.pdf).
+A detailed, step-by-step explanation of this algorithm is available in [the report](docs/push_swap_report.pdf). This section gives a brief overview of the approach used in this project.
 
 This project uses an Iterated Greedy approach to push_swap. Iterated Greedy repeatedly destroys part of the current solution and then reconstructs it using a greedy method.
 
