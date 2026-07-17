@@ -48,6 +48,8 @@ brew install cmake llvm
 macOS builds may require an updated Command Line Tools installation.
 If Homebrew reports outdated Command Line Tools, update them before installing or upgrading CMake/LLVM.
 
+Note: On macOS, Clang may emit stricter compiler warnings during the build. In the confirmed macOS environment, the build completed successfully and the generated executable passed basic checks, so these warnings are currently accepted rather than fixed.
+
 On Intel Mac, Homebrew is usually installed under `/usr/local`:
 
 ```bash
