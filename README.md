@@ -2,6 +2,8 @@
 
 `push_swap` is a C++20 implementation for the 42 push_swap project.
 
+Note: This repository has not been fully cleaned up. Many files are remnants of earlier experiments and are no longer used by the current solver. They are kept for now because safely identifying and removing all inactive code would require more cleanup work than was practical for this release.
+
 ## Requirements
 
 - CMake 3.25 or newer
