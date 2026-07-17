@@ -38,14 +38,14 @@ The following examples show one run for 100 elements and one run for 500 element
 
 ### 100 Elements
 
-<video src="examples/n100/sort.mp4" controls width="720"></video>
+https://github.com/user-attachments/assets/ea1a9124-d212-4739-9f23-cf8611b37754
 
 - Input sequence: [input.txt](examples/n100/input.txt)
 - Generated commands: [commands.txt](examples/n100/commands.txt)
 
 ### 500 Elements
 
-<video src="examples/n500/sort.mp4" controls width="720"></video>
+https://github.com/user-attachments/assets/0a47335f-785a-4a04-bee3-c7446af67800
 
 - Input sequence: [input.txt](examples/n500/input.txt)
 - Generated commands: [commands.txt](examples/n500/commands.txt)
