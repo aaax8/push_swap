@@ -1405,23 +1405,92 @@ bool parse_cli_value(const std::string& token, int& value) {
 }
 // human_review_end
 
-// human_review_begin: nafuka tester と checker 互換 argv の stack A を検証するため。
-// 責務: 複数 argv または単一文字列 argv を検証し、int 配列へ変換する。
-// 必要な理由: tester/42 形式では stack A の渡され方が複数 argv と単一文字列の両方あり得るため。
-std::optional<std::vector<int>> parse_cli_args(int argc, char *argv[]) {
+struct ParsedCliInput {
+    CliSolveOptions options;
+    std::vector<std::string> value_tokens;
+};
+
+void append_split_cli_tokens(const std::string& arg, std::vector<std::string>& tokens) {
+    std::istringstream iss(arg);
+    std::string token;
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+}
+
+bool parse_positive_cli_option_value(const std::string& value_token, int& value) {
+    if (!parse_cli_value(value_token, value)) {
+        return false;
+    }
+    return value > 0;
+}
+
+bool parse_cli_key_value_option(
+        const std::string& token,
+        const std::string& key,
+        std::optional<int>& target
+) {
+    const std::string prefix = key + "=";
+    if (token.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    if (target.has_value()) {
+        return false;
+    }
+    int value = 0;
+    if (!parse_positive_cli_option_value(token.substr(prefix.size()), value)) {
+        return false;
+    }
+    target = value;
+    return true;
+}
+
+std::optional<ParsedCliInput> parse_cli_input(int argc, char *argv[]) {
     my_assert(argc > 1);
     std::vector<std::string> tokens;
-    if (argc == 2) {
-        if (!split_cli_arg(argv[1], tokens)) {
+    for (int i = 1; i < argc; i++) {
+        append_split_cli_tokens(argv[i], tokens);
+    }
+    if (tokens.empty()) {
+        return std::nullopt;
+    }
+
+    ParsedCliInput parsed;
+    for (const std::string& token : tokens) {
+        if (token == "--deep") {
+            if (parsed.options.deep) {
+                return std::nullopt;
+            }
+            parsed.options.deep = true;
+        } else if (token.rfind("--opt-range=", 0) == 0) {
+            if (!parse_cli_key_value_option(token, "--opt-range", parsed.options.opt_range)) {
+                return std::nullopt;
+            }
+        } else if (token.rfind("--iter-count=", 0) == 0) {
+            if (!parse_cli_key_value_option(token, "--iter-count", parsed.options.iter_count)) {
+                return std::nullopt;
+            }
+        } else if (token.rfind("--", 0) == 0) {
             return std::nullopt;
-        }
-    } else {
-        tokens.reserve(argc - 1);
-        for (int i = 1; i < argc; i++) {
-            tokens.emplace_back(argv[i]);
+        } else {
+            parsed.value_tokens.push_back(token);
         }
     }
 
+    if (!parsed.options.deep &&
+        (parsed.options.opt_range.has_value() || parsed.options.iter_count.has_value())) {
+        return std::nullopt;
+    }
+    if (parsed.value_tokens.empty()) {
+        return std::nullopt;
+    }
+    return parsed;
+}
+
+// human_review_begin: nafuka tester と checker 互換 argv の stack A を検証するため。
+// 責務: 複数 argv または単一文字列 argv を検証し、int 配列へ変換する。
+// 必要な理由: tester/42 形式では stack A の渡され方が複数 argv と単一文字列の両方あり得るため。
+std::optional<std::vector<int>> parse_cli_args(const std::vector<std::string>& tokens) {
     std::vector<int> values;
     values.reserve(tokens.size());
     std::set<int> seen;
@@ -1442,8 +1511,8 @@ std::optional<std::vector<int>> parse_cli_args(int argc, char *argv[]) {
 // human_review_begin: nafuka tester が渡す argv を既存 solver 用 State に変換するため。
 // 責務: 検証済み argv を内部用の 0 始まり圧縮値 State に変換し、失敗時は nullopt を返す。
 // 必要な理由: 既存 solver は値の相対順序を 0..N-1 の compressed value として扱うため。
-std::optional<State> build_cli_state(int argc, char *argv[]) {
-    std::optional<std::vector<int>> values = parse_cli_args(argc, argv);
+std::optional<State> build_cli_state(const std::vector<std::string>& value_tokens) {
+    std::optional<std::vector<int>> values = parse_cli_args(value_tokens);
     if (!values.has_value()) {
         return std::nullopt;
     }
@@ -1467,21 +1536,67 @@ void print_cli_cmds(const State& optimized_state) {
 // 責務: argv 形式の push_swap 入力を N=100/N=500 の既存 owner 処理へ流し、command 列だけを出力する。
 // 必要な理由: tester 形式では実験ループではなく 1 入力に対する解だけを返す必要があるため。
 int solve_push_swap_cli(int argc, char *argv[]) {
-    std::optional<State> maybe_initial_state = build_cli_state(argc, argv);
+    std::optional<ParsedCliInput> maybe_input = parse_cli_input(argc, argv);
+    if (!maybe_input.has_value()) {
+        std::cerr << "Error\n";
+        return 1;
+    }
+    const ParsedCliInput& input = maybe_input.value();
+    std::optional<State> maybe_initial_state = build_cli_state(input.value_tokens);
     if (!maybe_initial_state.has_value()) {
         std::cerr << "Error\n";
         return 1;
     }
     State initial_state = *maybe_initial_state;
-    my_assert(initial_state.current_N == 100 || initial_state.current_N == 500);
+    if (initial_state.current_N <= 0 || initial_state.current_N > 500) {
+        std::cerr << "Error\n";
+        return 1;
+    }
     init(initial_state.current_N);
     set_optimize_range_log_enabled(false);
     set_alns_sum_log(false);
-    CoutSilencer silencer;
-    State optimized_state = (initial_state.current_N == 100)
-                            ? solve_owner_unit_100<100, 3000, 2>(initial_state)
-                            : solve_owner_unit_500<501, 300, 2>(initial_state);
-    silencer.restore();
+    State optimized_state = [&]() {
+        /*std::cout << "cli_debug current_N=" << initial_state.current_N
+                  << " deep=" << input.options.deep
+                  << " opt_range=";
+        if (input.options.opt_range.has_value()) {
+            std::cout << input.options.opt_range.value();
+        } else {
+            std::cout << "default";
+        }
+        std::cout << " iter_count=";
+        if (input.options.iter_count.has_value()) {
+            std::cout << input.options.iter_count.value();
+        } else {
+            std::cout << "default";
+        }
+        std::cout << '\n';
+        std::cout << "cli_debug initial_state=" << initial_state << '\n';
+*/
+        CoutSilencer silencer;
+        if (initial_state.current_N <= 100) {
+            if (input.options.deep) {
+                silencer.restore();
+                std::cout << "cli_debug route=solve_owner_unit_100_deep\n";
+                CoutSilencer route_silencer;
+                return solve_owner_unit_100_deep<100, 3000, 2>(initial_state, input.options);
+            }
+            silencer.restore();
+            std::cout << "cli_debug route=solve_owner_unit_100\n";
+            CoutSilencer route_silencer;
+            return solve_owner_unit_100<100, 3000, 2>(initial_state);
+        }
+        if (input.options.deep) {
+            silencer.restore();
+            std::cout << "cli_debug route=solve_owner_unit_500_deep\n";
+            CoutSilencer route_silencer;
+            return solve_owner_unit_500_deep<501, 300, 2>(initial_state, input.options);
+        }
+        silencer.restore();
+        std::cout << "cli_debug route=solve_owner_unit_500\n";
+        CoutSilencer route_silencer;
+        return solve_owner_unit_500<501, 300, 2>(initial_state);
+    }();
     print_cli_cmds(optimized_state);
     return 0;
 }
@@ -1492,6 +1607,9 @@ int main(int argc, char *argv[]) {
     // human_review_begin: 引数あり実行を nafuka tester 形式の push_swap CLI として扱うため。
     if (argc > 1) {
         return solve_push_swap_cli(argc, argv);
+    }else{
+        //todo 引数が必要だとエラーを出す
+        return 0;
     }
     // human_review_end
 //    {

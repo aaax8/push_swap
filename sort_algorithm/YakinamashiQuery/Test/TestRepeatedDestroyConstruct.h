@@ -19,10 +19,17 @@
 #include "Command/optimize/OptimizeRangeSearch.h"
 #include <array>
 #include <chrono>
+#include <optional>
 #include <sstream>
 #include <variant>
 
 namespace {
+    struct CliSolveOptions {
+        bool deep = false;
+        std::optional<int> opt_range;
+        std::optional<int> iter_count;
+    };
+
     // 責務: 通常 constructor と worst-half 二段 constructor のどちらを使うかを切り替える。
     // 必要な理由: 全 arm へ新 constructor を自然に適用しつつ、false に戻すだけで既存経路へ戻せるようにするため。
     static constexpr bool USE_WORST_HALF_REBUILD_CONSTRUCTOR = false;
@@ -358,6 +365,82 @@ namespace {
         optimize_all_range(optimized_state, OPT_RANGE_SIZE, OPT_LEFT);
         return optimized_state;
     }
+
+        template<size_t MAX_N, int HABA, int K>
+    State solve_owner_unit_100_deep(const State &init_state, const CliSolveOptions &options) {
+        //現状中身同じ todo
+        constexpr int ALNS_SEED = 2026041451;
+        constexpr int DEFAULT_FIRST_ITER_COUNT = 200;
+        constexpr int EXTRA_ITER_COUNT = 300;
+        constexpr int LIS_RANGE = 20;
+        constexpr int NARROW_HABA = 500;
+        constexpr int DEFAULT_OPT_RANGE_SIZE = 9;
+        constexpr int OPT_LEFT = 0;
+        constexpr AlnsAcceptMode ACCEPT_MODE = ALNS_ACCEPT_MODE;
+        constexpr int NO_TIME_LIMIT_SEC = -1;
+        GreedyConstructorParams params{10, 5, 5, 5, 5, 20, 24, 3};
+        const int first_iter_count = options.iter_count.value_or(DEFAULT_FIRST_ITER_COUNT);
+        const int opt_range_size = options.opt_range.value_or(DEFAULT_OPT_RANGE_SIZE);
+
+        GreedyQueriesConstructor<MAX_N>::set_timing_log_enabled(false);
+        GreedyQueriesConstructor<MAX_N>::set_owner_collector_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_owner_check_enabled(false);
+        GreedyQueriesConstructor<MAX_N>::set_owner_array_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_owner_unit_range_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_owner_even_unit_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_pair_refine_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_pair_refine_params(6, 1, 1, 3);
+        set_worst_half_enabled(false);
+        set_b_move_enabled(false);
+        set_aorder_range_enabled(false);
+        set_my_rand_seed(static_cast<uint32_t>(ALNS_SEED));
+        ChunkAndBeamSolver<MAX_N, NARROW_HABA, K>::set_lis_start_log_enabled(false);
+
+        YstFactory<MAX_N, HABA, K> factory;
+        auto build_result = factory.template build_lis_range_score<NARROW_HABA>(init_state, LIS_RANGE, false);
+        YakinamashiState<MAX_N> current_yst = std::move(build_result.yst);
+        //
+
+        YakinamashiState<MAX_N> first_yst = current_yst;
+        YakinamashiState<MAX_N> second_yst = current_yst;
+        const int first_score = run_alns_destroy_construct<MAX_N, HABA, K>(
+                init_state,
+                first_yst,
+                first_iter_count,
+                ACCEPT_MODE,
+                params,
+                NO_TIME_LIMIT_SEC,
+                false,
+                false,
+                nullptr);
+        const int second_score = run_alns_destroy_construct<MAX_N, HABA, K>(
+                init_state,
+                second_yst,
+                first_iter_count,
+                ACCEPT_MODE,
+                params,
+                NO_TIME_LIMIT_SEC,
+                false,
+                false,
+                nullptr);
+        YakinamashiState<MAX_N> best_yst = (first_score <= second_score)
+                                           ? std::move(first_yst)
+                                           : std::move(second_yst);
+        const int extra_score = run_alns_destroy_construct<MAX_N, HABA, K>(
+                init_state,
+                best_yst,
+                EXTRA_ITER_COUNT,
+                ACCEPT_MODE,
+                params,
+                NO_TIME_LIMIT_SEC,
+                false,
+                false,
+                nullptr);
+        (void) extra_score;
+        State optimized_state = build_owner_optimized_state(init_state, best_yst);
+        optimize_all_range(optimized_state, opt_range_size, OPT_LEFT);
+        return optimized_state;
+    }
     // human_review_end
 
     // human_review_begin: nafuka tester 用に、N=500 の単一 argv 入力へ既存 owner_array_unit_500 と同じ処理を適用するため。
@@ -422,6 +505,69 @@ namespace {
         return optimized_state;
     }
     // human_review_end
+
+    //ひどいけどコピペで
+    template<size_t MAX_N, int HABA, int K>
+    State solve_owner_unit_500_deep(const State &init_state, const CliSolveOptions &options) {
+        constexpr int ALNS_SEED = 2026041451;
+        constexpr int DEFAULT_ITER_COUNT = 150;
+        constexpr int EXTRA_ITER_COUNT = 50;
+        constexpr int EXTRA_SCORE_THRESHOLD = 3000;
+        constexpr int LIS_RANGE = 100;//50
+        constexpr int NARROW_HABA = 200;
+        constexpr int DEFAULT_OPT_RANGE_SIZE = 7;
+        constexpr int OPT_LEFT = 0;
+        constexpr AlnsAcceptMode ACCEPT_MODE = AlnsAcceptMode::Lahc;
+        constexpr int NO_TIME_LIMIT_SEC = -1;
+        GreedyConstructorParams params{10, 4, 4, 4, 4, 25, 24, 3};
+        const int iter_count = options.iter_count.value_or(DEFAULT_ITER_COUNT);
+        const int opt_range_size = options.opt_range.value_or(DEFAULT_OPT_RANGE_SIZE);
+
+        GreedyQueriesConstructor<MAX_N>::set_timing_log_enabled(false);
+        GreedyQueriesConstructor<MAX_N>::set_owner_collector_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_owner_check_enabled(false);
+        GreedyQueriesConstructor<MAX_N>::set_owner_array_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_owner_unit_range_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_owner_even_unit_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_pair_refine_enabled(true);
+        GreedyQueriesConstructor<MAX_N>::set_pair_refine_params(6, 1, 1, 3);
+        set_worst_half_enabled(false);
+        set_b_move_enabled(false);
+        set_aorder_range_enabled(false);
+        set_my_rand_seed(static_cast<uint32_t>(ALNS_SEED));
+        ChunkAndBeamSolver<MAX_N, NARROW_HABA, K>::set_lis_start_log_enabled(false);
+
+        YstFactory<MAX_N, HABA, K> factory;
+        auto build_result = factory.template build_lis_range_score<NARROW_HABA>(init_state, LIS_RANGE, false);
+        YakinamashiState<MAX_N> current_yst = std::move(build_result.yst);
+
+        int alns_score = run_alns_destroy_construct<MAX_N, HABA, K>(
+                init_state,
+                current_yst,
+                iter_count,
+                ACCEPT_MODE,
+                params,
+                NO_TIME_LIMIT_SEC,
+                false,
+                false,
+                nullptr);
+        if (alns_score >= EXTRA_SCORE_THRESHOLD) {
+            alns_score = run_alns_destroy_construct<MAX_N, HABA, K>(
+                    init_state,
+                    current_yst,
+                    EXTRA_ITER_COUNT,
+                    ACCEPT_MODE,
+                    params,
+                    NO_TIME_LIMIT_SEC,
+                    false,
+                    false,
+                    nullptr);
+        }
+        (void) alns_score;
+        State optimized_state = build_owner_optimized_state(init_state, current_yst);
+        optimize_all_range(optimized_state, opt_range_size, OPT_LEFT);
+        return optimized_state;
+    }
 
     // 責務: case ごとの ALNS score、OptimizeRangeSearch 後 score、最適化後 command 列を 1 行で書く。
     // 必要な理由: ALNS best 更新ログとは別に、case 最終結果として採用した range 最適化後 command を確認するため。
