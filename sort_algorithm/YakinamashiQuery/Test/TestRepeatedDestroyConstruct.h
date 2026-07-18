@@ -454,7 +454,7 @@ namespace {
         constexpr int EXTRA_SCORE_THRESHOLD = 3000;
         constexpr int LIS_RANGE = 50;
         constexpr int NARROW_HABA = 200;
-        constexpr int OPT_RANGE_SIZE = 7;
+        constexpr int OPT_RANGE_SIZE = 14;//14の時、自分の環境でopt-rangeの処理に90分ぐらい。2増やす度に、実行時間が5.4倍程度になる
         constexpr int OPT_LEFT = 0;
         constexpr AlnsAcceptMode ACCEPT_MODE = AlnsAcceptMode::HillClimbing;
         constexpr int NO_TIME_LIMIT_SEC = -1;

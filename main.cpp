@@ -1410,7 +1410,7 @@ struct ParsedCliInput {
     std::vector<std::string> value_tokens;
 };
 
-constexpr int CLI_OPT_RANGE_MAX = 20;
+constexpr int CLI_OPT_RANGE_MAX = 16;
 
 void append_split_cli_tokens(const std::string& arg, std::vector<std::string>& tokens) {
     std::istringstream iss(arg);

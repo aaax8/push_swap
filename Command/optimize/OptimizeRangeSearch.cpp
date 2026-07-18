@@ -49,7 +49,8 @@ void optimize_all_range(State& st, int range, int left){
     {
         // human_review_begin: 通常実験では進捗ログを保ち、push_swap CLI では stdout 汚染を止めるため。
         if (optimize_range_log_enabled) {
-            cout << "l=" << l << endl;
+            //todo
+            cerr << "l=" << l << endl;
         }
         // human_review_end
         int r = l + range;
