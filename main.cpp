@@ -1548,8 +1548,12 @@ int solve_push_swap_cli(int argc, char *argv[]) {
         return 1;
     }
     State initial_state = *maybe_initial_state;
-    if (initial_state.current_N <= 0 || initial_state.current_N > 500) {
+    if (initial_state.current_N <= 0) {
         std::cerr << "Error\n";
+        return 1;
+    }
+    if (initial_state.current_N > 500) {
+        std::cerr << "Error: this solver supports up to 500 values\n";
         return 1;
     }
     init(initial_state.current_N);
