@@ -30,6 +30,8 @@ namespace {
         std::optional<int> iter_count;
     };
 
+    constexpr int DEFAULT_ALNS_RESTART_LIMIT = 30;
+
     // 責務: 通常 constructor と worst-half 二段 constructor のどちらを使うかを切り替える。
     // 必要な理由: 全 arm へ新 constructor を自然に適用しつつ、false に戻すだけで既存経路へ戻せるようにするため。
     static constexpr bool USE_WORST_HALF_REBUILD_CONSTRUCTOR = false;
@@ -286,7 +288,8 @@ namespace {
             int time_limit_sec,
             bool show_alns_log = false,
             bool show_alns_file_log = false,
-            std::ofstream *owner_best_cmd_log = nullptr
+            std::ofstream *owner_best_cmd_log = nullptr,
+            int restart_limit = DEFAULT_ALNS_RESTART_LIMIT
     );
     // human_review_end
 
@@ -370,8 +373,8 @@ namespace {
     State solve_owner_unit_100_deep(const State &init_state, const CliSolveOptions &options) {
         //現状中身同じ todo
         constexpr int ALNS_SEED = 2026041451;
-        constexpr int DEFAULT_FIRST_ITER_COUNT = 200;
-        constexpr int EXTRA_ITER_COUNT = 300;
+        constexpr int FIRST_ITER_COUNT = 10000;
+        constexpr int DEFAULT_EXTRA_ITER_COUNT = 100000;
         constexpr int LIS_RANGE = 20;
         constexpr int NARROW_HABA = 500;
         constexpr int DEFAULT_OPT_RANGE_SIZE = 9;
@@ -379,7 +382,7 @@ namespace {
         constexpr AlnsAcceptMode ACCEPT_MODE = ALNS_ACCEPT_MODE;
         constexpr int NO_TIME_LIMIT_SEC = -1;
         GreedyConstructorParams params{10, 5, 5, 5, 5, 20, 24, 3};
-        const int first_iter_count = options.iter_count.value_or(DEFAULT_FIRST_ITER_COUNT);
+        const int extra_iter_count = options.iter_count.value_or(DEFAULT_EXTRA_ITER_COUNT);
         const int opt_range_size = options.opt_range.value_or(DEFAULT_OPT_RANGE_SIZE);
 
         GreedyQueriesConstructor<MAX_N>::set_timing_log_enabled(false);
@@ -406,7 +409,7 @@ namespace {
         const int first_score = run_alns_destroy_construct<MAX_N, HABA, K>(
                 init_state,
                 first_yst,
-                first_iter_count,
+                FIRST_ITER_COUNT,
                 ACCEPT_MODE,
                 params,
                 NO_TIME_LIMIT_SEC,
@@ -416,7 +419,7 @@ namespace {
         const int second_score = run_alns_destroy_construct<MAX_N, HABA, K>(
                 init_state,
                 second_yst,
-                first_iter_count,
+                FIRST_ITER_COUNT,
                 ACCEPT_MODE,
                 params,
                 NO_TIME_LIMIT_SEC,
@@ -429,7 +432,7 @@ namespace {
         const int extra_score = run_alns_destroy_construct<MAX_N, HABA, K>(
                 init_state,
                 best_yst,
-                EXTRA_ITER_COUNT,
+                extra_iter_count,
                 ACCEPT_MODE,
                 params,
                 NO_TIME_LIMIT_SEC,
@@ -510,17 +513,17 @@ namespace {
     template<size_t MAX_N, int HABA, int K>
     State solve_owner_unit_500_deep(const State &init_state, const CliSolveOptions &options) {
         constexpr int ALNS_SEED = 2026041451;
-        constexpr int DEFAULT_ITER_COUNT = 20000;
-        constexpr int EXTRA_ITER_COUNT = 50;
-        constexpr int EXTRA_SCORE_THRESHOLD = 3000;
+        constexpr int FIRST_ITER_COUNT = 2000;
+        constexpr int DEFAULT_EXTRA_ITER_COUNT = 20000;
         constexpr int LIS_RANGE = 100;//50
         constexpr int NARROW_HABA = 500;
         constexpr int DEFAULT_OPT_RANGE_SIZE = 14;
         constexpr int OPT_LEFT = 0;
+        constexpr int DEEP_RESTART_LIMIT = 300;
         constexpr AlnsAcceptMode ACCEPT_MODE = AlnsAcceptMode::Lahc;
         constexpr int NO_TIME_LIMIT_SEC = -1;
         GreedyConstructorParams params{10, 4, 4, 4, 4, 25, 24, 3};
-        const int iter_count = options.iter_count.value_or(DEFAULT_ITER_COUNT);
+        const int extra_iter_count = options.iter_count.value_or(DEFAULT_EXTRA_ITER_COUNT);
         const int opt_range_size = options.opt_range.value_or(DEFAULT_OPT_RANGE_SIZE);
 
         GreedyQueriesConstructor<MAX_N>::set_timing_log_enabled(false);
@@ -541,30 +544,46 @@ namespace {
         auto build_result = factory.template build_lis_range_score<NARROW_HABA>(init_state, LIS_RANGE, false);
         YakinamashiState<MAX_N> current_yst = std::move(build_result.yst);
 
-        int alns_score = run_alns_destroy_construct<MAX_N, HABA, K>(
+        YakinamashiState<MAX_N> first_yst = current_yst;
+        YakinamashiState<MAX_N> second_yst = current_yst;
+        const int first_score = run_alns_destroy_construct<MAX_N, HABA, K>(
                 init_state,
-                current_yst,
-                iter_count,
+                first_yst,
+                FIRST_ITER_COUNT,
                 ACCEPT_MODE,
                 params,
                 NO_TIME_LIMIT_SEC,
                 false,
                 false,
-                nullptr);
-        if (alns_score >= EXTRA_SCORE_THRESHOLD) {
-            alns_score = run_alns_destroy_construct<MAX_N, HABA, K>(
-                    init_state,
-                    current_yst,
-                    EXTRA_ITER_COUNT,
-                    ACCEPT_MODE,
-                    params,
-                    NO_TIME_LIMIT_SEC,
-                    false,
-                    false,
-                    nullptr);
-        }
-        (void) alns_score;
-        State optimized_state = build_owner_optimized_state(init_state, current_yst);
+                nullptr,
+                DEEP_RESTART_LIMIT);
+        const int second_score = run_alns_destroy_construct<MAX_N, HABA, K>(
+                init_state,
+                second_yst,
+                FIRST_ITER_COUNT,
+                ACCEPT_MODE,
+                params,
+                NO_TIME_LIMIT_SEC,
+                false,
+                false,
+                nullptr,
+                DEEP_RESTART_LIMIT);
+        YakinamashiState<MAX_N> best_yst = (first_score <= second_score)
+                                           ? std::move(first_yst)
+                                           : std::move(second_yst);
+        const int extra_score = run_alns_destroy_construct<MAX_N, HABA, K>(
+                init_state,
+                best_yst,
+                extra_iter_count,
+                ACCEPT_MODE,
+                params,
+                NO_TIME_LIMIT_SEC,
+                false,
+                false,
+                nullptr,
+                DEEP_RESTART_LIMIT);
+        (void) extra_score;
+        State optimized_state = build_owner_optimized_state(init_state, best_yst);
         optimize_all_range(optimized_state, opt_range_size, OPT_LEFT);
         return optimized_state;
     }
@@ -656,7 +675,7 @@ namespace {
     constexpr double ALNS_UCB_EPS = 1e-9;
     constexpr int DEFAULT_ALNS_LAHC_HISTORY_SIZE = 30;
     constexpr int DEFAULT_ALNS_WORSEN_LIMIT = 10;
-    constexpr int ALNS_RESTART_LIMIT = 30;
+    constexpr int ALNS_RESTART_LIMIT = DEFAULT_ALNS_RESTART_LIMIT;
     constexpr int ALNS_ANNEALING_ITER_COUNT = 500;
     constexpr double ALNS_ANNEALING_START_TEMP = 10.0;
     constexpr double ALNS_ANNEALING_END_TEMP = 0.1;
@@ -2537,9 +2556,11 @@ namespace {
             int iter,
             YakinamashiState<MAX_N> &current_yst,
             const AlnsBestState<MAX_N> &best_state,
-            AlnsArmRuntimeState &runtime
+            AlnsArmRuntimeState &runtime,
+            int restart_limit
     ) {
-        if (runtime.no_improve_count < ALNS_RESTART_LIMIT) return false;
+        if (restart_limit <= 0) return false;
+        if (runtime.no_improve_count < restart_limit) return false;
         current_yst = best_state.best_yst;
         reset_lahc_history(runtime);
         runtime.no_improve_count = 0;
@@ -2644,7 +2665,9 @@ namespace {
             int iter,
             AlnsAcceptMode accept_mode,
             bool show_alns_log,
-            bool show_alns_file_log, std::ofstream *owner_best_cmd_log = nullptr
+            bool show_alns_file_log,
+            std::ofstream *owner_best_cmd_log,
+            int restart_limit
     ) {
         apply_discount_to_alns_arm_stats(runtime);
         int arm_idx = choose_alns_arm(runtime);
@@ -2720,7 +2743,7 @@ namespace {
             GreedyQueriesConstructor<MAX_N>::write_timing_log(ss.str());
             timing_stage_start = timing_now;
         }
-        result.restarted = restart_alns_if_stalled(iter, current_yst, best_state, runtime);
+        result.restarted = restart_alns_if_stalled(iter, current_yst, best_state, runtime, restart_limit);
         if (GreedyQueriesConstructor<MAX_N>::is_timing_log_enabled()) {
             const auto timing_now = std::chrono::steady_clock::now();
             const auto elapsed_ms =
@@ -2975,7 +2998,8 @@ namespace {
             int time_limit_sec,
             bool show_alns_log,
             bool show_alns_file_log,
-            std::ofstream *owner_best_cmd_log
+            std::ofstream *owner_best_cmd_log,
+            int restart_limit
     ) {
         my_assert(iter_count >= 0);
         //Optuna std::cout<<" run_alns_destroy_construct"<< std::endl;
@@ -2996,13 +3020,13 @@ namespace {
             GreedyQueriesConstructor<MAX_N>::set_timing_iter(iter);
             if (show_alns_log) cout << "iter " << iter << endl;
             // human_review_begin: 通常実験では進捗ログを保ち、push_swap CLI では stdout 汚染を止めるため。
-            if (alns_sum_log_enabled()) {
-                cout << "iter " << iter << ", sum " << yst.queries_state.sum_turn << endl;
+            if (true || alns_sum_log_enabled()) {
+                cerr << "iter " << iter << ", sum " << yst.queries_state.sum_turn << endl;
             }
             // human_review_end
             run_alns_lahc_iter_by_arms<MAX_N, HABA, K>(
                     init_state, yst, constructor, arms, runtime, best_state, iter, accept_mode,
-                    show_alns_log, show_alns_file_log, owner_best_cmd_log
+                    show_alns_log, show_alns_file_log, owner_best_cmd_log, restart_limit
             );
             if (has_elapsed_time_limit(start_time, time_limit_sec)) break;
         }

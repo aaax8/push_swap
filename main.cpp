@@ -1410,7 +1410,7 @@ struct ParsedCliInput {
     std::vector<std::string> value_tokens;
 };
 
-constexpr int CLI_OPT_RANGE_MAX = 16;
+constexpr int CLI_OPT_RANGE_MAX = 20;
 
 void append_split_cli_tokens(const std::string& arg, std::vector<std::string>& tokens) {
     std::istringstream iss(arg);
@@ -1623,8 +1623,8 @@ int main(int argc, char *argv[]) {
     if (argc > 1) {
         return solve_push_swap_cli(argc, argv);
     }else{
-        //todo 引数が必要だとエラーを出す
-        return 0;
+        std::cerr << "Error\n";
+        return 1;
     }
     // human_review_end
 //    {
