@@ -510,12 +510,12 @@ namespace {
     template<size_t MAX_N, int HABA, int K>
     State solve_owner_unit_500_deep(const State &init_state, const CliSolveOptions &options) {
         constexpr int ALNS_SEED = 2026041451;
-        constexpr int DEFAULT_ITER_COUNT = 150;
+        constexpr int DEFAULT_ITER_COUNT = 20000;
         constexpr int EXTRA_ITER_COUNT = 50;
         constexpr int EXTRA_SCORE_THRESHOLD = 3000;
         constexpr int LIS_RANGE = 100;//50
-        constexpr int NARROW_HABA = 200;
-        constexpr int DEFAULT_OPT_RANGE_SIZE = 7;
+        constexpr int NARROW_HABA = 500;
+        constexpr int DEFAULT_OPT_RANGE_SIZE = 14;
         constexpr int OPT_LEFT = 0;
         constexpr AlnsAcceptMode ACCEPT_MODE = AlnsAcceptMode::Lahc;
         constexpr int NO_TIME_LIMIT_SEC = -1;

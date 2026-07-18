@@ -1410,6 +1410,8 @@ struct ParsedCliInput {
     std::vector<std::string> value_tokens;
 };
 
+constexpr int CLI_OPT_RANGE_MAX = 20;
+
 void append_split_cli_tokens(const std::string& arg, std::vector<std::string>& tokens) {
     std::istringstream iss(arg);
     std::string token;
@@ -1445,7 +1447,7 @@ bool parse_cli_key_value_option(
     return true;
 }
 
-std::optional<ParsedCliInput> parse_cli_input(int argc, char *argv[]) {
+std::optional<ParsedCliInput> parse_cli_input(int argc, char *argv[], std::string& error_message) {
     my_assert(argc > 1);
     std::vector<std::string> tokens;
     for (int i = 1; i < argc; i++) {
@@ -1464,6 +1466,10 @@ std::optional<ParsedCliInput> parse_cli_input(int argc, char *argv[]) {
             parsed.options.deep = true;
         } else if (token.rfind("--opt-range=", 0) == 0) {
             if (!parse_cli_key_value_option(token, "--opt-range", parsed.options.opt_range)) {
+                return std::nullopt;
+            }
+            if (parsed.options.opt_range.value() > CLI_OPT_RANGE_MAX) {
+                error_message = "Error: --opt-range must be " + std::to_string(CLI_OPT_RANGE_MAX) + " or less";
                 return std::nullopt;
             }
         } else if (token.rfind("--iter-count=", 0) == 0) {
@@ -1536,9 +1542,14 @@ void print_cli_cmds(const State& optimized_state) {
 // 責務: argv 形式の push_swap 入力を N=100/N=500 の既存 owner 処理へ流し、command 列だけを出力する。
 // 必要な理由: tester 形式では実験ループではなく 1 入力に対する解だけを返す必要があるため。
 int solve_push_swap_cli(int argc, char *argv[]) {
-    std::optional<ParsedCliInput> maybe_input = parse_cli_input(argc, argv);
+    std::string cli_parse_error;
+    std::optional<ParsedCliInput> maybe_input = parse_cli_input(argc, argv, cli_parse_error);
     if (!maybe_input.has_value()) {
-        std::cerr << "Error\n";
+        if (!cli_parse_error.empty()) {
+            std::cerr << cli_parse_error << '\n';
+        } else {
+            std::cerr << "Error\n";
+        }
         return 1;
     }
     const ParsedCliInput& input = maybe_input.value();
@@ -1581,23 +1592,23 @@ int solve_push_swap_cli(int argc, char *argv[]) {
         if (initial_state.current_N <= 100) {
             if (input.options.deep) {
                 silencer.restore();
-                std::cout << "cli_debug route=solve_owner_unit_100_deep\n";
+                //std::cout << "cli_debug route=solve_owner_unit_100_deep\n";
                 CoutSilencer route_silencer;
                 return solve_owner_unit_100_deep<100, 3000, 2>(initial_state, input.options);
             }
             silencer.restore();
-            std::cout << "cli_debug route=solve_owner_unit_100\n";
+           // std::cout << "cli_debug route=solve_owner_unit_100\n";
             CoutSilencer route_silencer;
             return solve_owner_unit_100<100, 3000, 2>(initial_state);
         }
         if (input.options.deep) {
             silencer.restore();
-            std::cout << "cli_debug route=solve_owner_unit_500_deep\n";
+            //std::cout << "cli_debug route=solve_owner_unit_500_deep\n";
             CoutSilencer route_silencer;
-            return solve_owner_unit_500_deep<501, 300, 2>(initial_state, input.options);
+            return solve_owner_unit_500_deep<501, 1000, 2>(initial_state, input.options);
         }
         silencer.restore();
-        std::cout << "cli_debug route=solve_owner_unit_500\n";
+       // std::cout << "cli_debug route=solve_owner_unit_500\n";
         CoutSilencer route_silencer;
         return solve_owner_unit_500<501, 300, 2>(initial_state);
     }();
